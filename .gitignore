@@ -1,3 +1,9 @@
+#Executables
+chroma
+processOb
+strip
+strip_nucl_2pt_proj
+
 # Compiled Object files
 *.slo
 *.lo
@@ -26,3 +32,8 @@
 *.exe
 *.out
 *.app
+
+# temp files
+/#*/#
+*~
+
