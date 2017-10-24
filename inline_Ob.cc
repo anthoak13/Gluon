@@ -164,9 +164,9 @@ namespace Chroma
 
 	//Create variables to store the plaquette and the average
 	//trace of the plaquette
-	multi2d<LatticeColorMatrix> plane_plaq;
+	multi3d<LatticeColorMatrix> plane_plaq;
 	multi2d<Double> tr_plane_plaq;
-	plane_plaq.resize(Nd,Nd);
+	plane_plaq.resize(4,Nd,Nd);
 	tr_plane_plaq.resize(Nd,Nd);
 	Double w_plaq;
 	Double s_plaq;
@@ -186,12 +186,12 @@ namespace Chroma
 		tmp3 = u[nu] * tmp;
 
 		//Record the plaquette in a cross section
-		plane_plaq[nu][mu] = tmp2*adj(tmp3);
-		tr_plane_plaq[nu][mu] = sum(real(trace(plane_plaq[nu][mu])));
+		plane_plaq[0][nu][mu] = tmp2*adj(tmp3);
+		tr_plane_plaq[nu][mu] = sum(real(trace(plane_plaq[0][nu][mu])));
 		
 		//Normalize the plane
 		tr_plane_plaq[nu][mu] /= Double(Layout::vol() * Nc);
-		plane_plaq[mu][nu] = plane_plaq[nu][mu]; //symmetric
+		plane_plaq[0][mu][nu] = plane_plaq[0][nu][mu]; //symmetric
 		tr_plane_plaq[mu][nu] = tr_plane_plaq[nu][mu]; //symmetric
 		
 		w_plaq += tr_plane_plaq[nu][mu];
@@ -227,8 +227,6 @@ namespace Chroma
 	    {
 		write(xml_out, "plane_plaq_" + std::to_string(mu) +
 		      std::to_string(nu), tr_plane_plaq[mu][nu]);
-		P[mu][nu] = plane_plaq[mu][nu] - adj(plane_plaq[mu][nu]);
-		P[nu][mu] = P[mu][nu];
 	    }
 	}
 
@@ -239,7 +237,7 @@ namespace Chroma
 	t_coords[1] = 5;
 	t_coords[2] = 5;
 	t_coords[3] = 5;
-	ColorMatrix F = get_G(t_coords, 1, 0, P);
+	//ColorMatrix F = get_G(t_coords, 1, 0, P);
 	//std::cout << F << std::endl;
 	
 	
@@ -249,7 +247,7 @@ namespace Chroma
 	std::vector<Double> B;
 
 	//Start at t_start
-	getO_b(O_b, E, B, params.t_start, plane_plaq);
+	getO_b(O_b, E, B, params.t_start, plane_plaq[0]);
 
 	//Write O_b out to the xml file
 	for(int t = 0; t < O_b.size(); t++)
