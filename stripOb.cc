@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
 	    
 	    xml_in.open(argv[i + (argc-numFiles)]);
 
-	    read(xml_in, "/chroma/InlineObservables/elem/GMF_O_b/O_b", O_b[i]);
+	    read(xml_in, "/GMF_O_b/O_b", O_b[i]);
 	    
 	}
 	catch(const std::string& e)

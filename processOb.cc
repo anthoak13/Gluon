@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
 	    }
 	    comp2pt[conf][t] /= numSrc;
 	    effMass2[conf][t] /= numSrc;
-	    //effMass2[conf][t] = std::log(effMass2[conf][t]);
+	    effMass2[conf][t] = std::log(effMass2[conf][t]);
 	    
 	}
     }
