@@ -56,35 +56,48 @@ int main(int argc, char *argv[])
 	for(int t = 0; t < nT; t++)
 	{
 	    O_b[conf][t] -= avgOb[t];
-	    corr2pt[conf][t] -= avg[t];
+	    //corr2pt[conf][t] -= avg[t];
 	}
     
     
-    /** Avergage c2pt over the sources **/
+    /** Avergage c2pt over the sources per configuration **/
     int subT = nT/numSrc;
-    vecDouble avg2pt(subT);
-    vecDouble avg2ptError(subT);
-    for(int t = 0; t < subT; t++)
+    vec2dDouble comp2pt(nConf);
+    vec2dDouble effMass2(nConf);
+    for(int conf = 0; conf < nConf; conf++)
     {
-	for(int i = 0; i < numSrc; i++)
+	comp2pt[conf] = vecDouble(subT,0);
+	effMass2[conf] = vecDouble(subT,0);
+	for(int t = 0; t < subT; t++)
 	{
-	    avg2pt[t] += avg[i*subT + t];
-	    avg2ptError[t] += sig[i*subT + t];
+	    for(int i = 0; i < numSrc; i++)
+	    {
+		comp2pt[conf][t] += corr2pt[conf][i*subT + t];
+		if (t < (subT - 1))
+		    effMass2[conf][t] += corr2pt[conf][i*subT + t]
+			/corr2pt[conf][(i*subT + (t + 1)) % nT];
+	    }
+	    comp2pt[conf][t] /= numSrc;
+	    effMass2[conf][t] /= numSrc;
+	    //effMass2[conf][t] = std::log(effMass2[conf][t]);
+	    
 	}
-	avg2pt[t] /= numSrc;
-	avg2ptError[t] /= numSrc;
     }
-
+    //Jackknife compressed 2pt and output
+    jackknife(effMass2,avg,sig);
+    writeFile("EffMass.txt",avg,sig);
+    jackknife(comp2pt,avg,sig);    
+    writeFile("2ptAvg.txt", avg, sig);
     
-    writeFile("2ptAvg.txt", avg2pt, avg2ptError);
-    
 
-    /** Construct the 3pt correlator, and jackknife it**/
-    //vec3dDouble corr3pt;
-    //vec2dDouble avg3pt, sig3pt;
-    //const3pt(corr3pt, corr2pt, O_b);
-    //jackknife(corr3pt, avg3pt, sig3pt);
-
+    //* Generate effective mass for c2pt *//
+    vecDouble effMass;
+    auto avg2pt = avg;
+    for(int t = 0; t < avg2pt.size(); t++)
+    {
+	effMass.push_back(std::log(avg2pt[t]/avg2pt[t+1 % avg2pt.size()]));
+    }
+    writeFile("2ptEffMass.txt", effMass, effMass);
 
     /** find matrix elements **/ //t_1 associated with O_b
     vec2dDouble x;

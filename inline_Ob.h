@@ -80,7 +80,9 @@ namespace Chroma
     static int tDir() { return Nd-1;}
 
     //Get if the location is valid given Radius
-    bool validLocation(const multi1d<int>& t_coords, const multi1d<int> t_src, int R);
+    bool validLocation(const multi1d<int>& t_coords,
+		       const multi1d<int>& t_src,
+		       int R);
 
     //Returns unnormalized O_b at coordinates coords
     //Also returns E^2 and B^2 at that point
@@ -88,10 +90,13 @@ namespace Chroma
 		  const multi2d<LatticeColorMatrix>& plane_plaq,
 		  Double &E, Double &B);
     
-    //Vector contains O_b found at each time t. Assumes tDir == 3
+    //Vector contains O_b found at each time t for passed src
+    // Assumes tDir == 3
     void getO_b(std::vector<Double>& O_b,
-		std::vector<Double>& E,
-		std::vector<Double>& B, int tStart,
+		std::vector<Double>& E, 
+		std::vector<Double>& B,
+		const  InlineObEnv::InlineObParams::Src_t src,
+		const int radius,
 		const multi2d<LatticeColorMatrix>& plane_plaq);
 
     ColorMatrix get_G(const multi1d<int>& coords, int mu, int nu,

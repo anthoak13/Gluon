@@ -4,9 +4,18 @@
 #include <iostream>
 #include <string>
 
-
-namespace Chroma 
+namespace QDP
 {
+     void read(XMLReader& xml, const std::string& path, InlineObEnv::InlineObParams::Src_t& src)
+    {
+	XMLReader namedTop(xml, path);
+
+	read(namedTop, "t_src", src.srcLoc);
+	read(namedTop, "t_start", src.t_start);
+	read(namedTop, "t_end", src.t_end);
+	
+    }
+
     void write(XMLWriter& xml, const std::string& path, const InlineObEnv::InlineObParams::Src_t& src)
     {
 	push(xml, path);
@@ -32,18 +41,9 @@ namespace Chroma
 	read(namedTop, "gauge_id", named_obj.gauge_id);
     }
 
-    void read(XMLReader& xml, const std::string& path, InlineObEnv::InlineObParams::Src_t& src)
-    {
-	XMLReader namedTop(xml, path);
-
-	read(namedTop, "t_src", src.srcLoc);
-	read(namedTop, "t_start", src.t_start);
-	read(namedTop, "t_end", src.t_end);
-	
-    }
-
-   
-
+}
+namespace Chroma 
+{
     
     namespace InlineObEnv 
     {
@@ -104,7 +104,7 @@ namespace Chroma
 		//spaced in time. See branch First-O_b for code
 		//that drops this assumtion and takes sources
 		//as the arguments (loc & start/stop times)
-		read(paramtop, "Multi_Src", srcs[0]);
+		read(paramtop, "Multi_Src", srcs);
 
 		read(paramtop, "radius", radius);
 
@@ -131,7 +131,7 @@ namespace Chroma
 	    push(xml_out, path);
 	    
 	    // write our all params
-	    //QDP::write(xml_out, "Multi_Src", srcs[0]);
+	    QDP::write(xml_out, "Multi_Src", srcs);
 	    //QDP::write(xml_out, "Named_Object", named_obj);
 	    QDP::write(xml_out, "radius", radius);
 
@@ -189,7 +189,7 @@ namespace Chroma
 
 
 	/** Calculate the two dimensional plaquettes **/
-
+	
 	//Get link matrix
 	multi1d<LatticeColorMatrix> u;
 	u = TheNamedObjMap::Instance().getData< multi1d<LatticeColorMatrix> >(params.named_obj.gauge_id);
@@ -278,19 +278,24 @@ namespace Chroma
 	std::vector<Double> E;
 	std::vector<Double> B;
 
-	//TODO:Change to a loop over srcs
-	//Start at t_start
-	getO_b(O_b, E, B, params.srcs[0].t_start, plane_plaq[0]);
-
-	//Write O_b out to the xml file
-	for(int t = 0; t < O_b.size(); t++)
+        for(int i = 0; i < params.srcs.size(); i++)
 	{
-	    push(xml_out, "t_" + std::to_string(t));
-	    write(xml_out, "O_b", O_b.at(t));
-	    write(xml_out, "E2", E.at(t));
-	    write(xml_out, "B2", B.at(t));
-	    pop(xml_out);
+	    //Start at t_start
+	    QDPIO::cout << "Processing src " << i << " from "
+			<< params.srcs[i].t_start << " to "
+			<< params.srcs[i].t_end << std::endl;
+	    getO_b(O_b, E, B, params.srcs[i], params.radius, plane_plaq[0]);
 	}
+	    
+	    //Write O_b out to the xml file
+	    for(int t = 0; t < O_b.size(); t++)
+	    {
+		push(xml_out, "t_" + std::to_string(t));
+		write(xml_out, "O_b", O_b.at(t));
+		write(xml_out, "E2", E.at(t));
+		write(xml_out, "B2", B.at(t));
+		pop(xml_out);
+	    }
 
 	pop(xml_out);
 		
@@ -328,8 +333,11 @@ namespace Chroma
 
 
     //Code to sum over all spaceial positions of O_b and return a vector O_b(t) = O_b[t]. 
-    void InlineMyMeas::getO_b(std::vector<Double>& vecOb, std::vector<Double>& vecE,
-			      std::vector<Double>& vecB, int tStart,
+    void InlineMyMeas::getO_b(std::vector<Double>& vecOb,
+			      std::vector<Double>& vecE,
+			      std::vector<Double>& vecB,
+			      const  InlineObEnv::InlineObParams::Src_t src,
+			      const int radius,
 			      const multi2d<LatticeColorMatrix>& plane_plaq)
     {
 	//Constants for finding O_b
@@ -338,12 +346,13 @@ namespace Chroma
 	Double Beta = 1;
 	Double a = 1;
 	
-	for(int t = 0; t < Layout::lattSize()[3]; t++)
+	for(int t = src.t_start; t != src.t_end+1; t = (t+1)% Layout::lattSize()[3] )
 	{
+	    //QDPIO::cout << "Processing t=" << t << std::endl;
 	    Double O_b = 0;
 	    Double E = 0;
 	    Double B = 0;
-	    t_coords[3] = (t + tStart) % Layout::lattSize()[3];
+	    t_coords[3] = t;
 
 	    /** Sum over all space **/
 	    for(int x = 0; x < Layout::lattSize()[0]; x++)
@@ -355,7 +364,7 @@ namespace Chroma
 		    for(int z = 0; z < Layout::lattSize()[2]; z++)
 		    {
 			t_coords[2] = z;
-			if(true)
+			if(validLocation(t_coords, src.srcLoc, radius))
 			{
 			    Double e,b;
 			    O_b += getO_b(t_coords, plane_plaq, e, b);
@@ -408,11 +417,19 @@ namespace Chroma
         return E-B;
     } //end getO_b
 
-    bool validLocation(const multi1d<int>& t_coords, const multi1d<int> t_src, int R)
+    bool InlineMyMeas::validLocation(const multi1d<int>& t_coords,
+				     const multi1d<int>& t_src,
+				     int R)
     {
 	int dist = 0;
-	for(int i = 0; i < 4; i++)
-	    dist += (t_coords[0] - t_src[0]) * (t_coords[0] - t_src[0]);
+	for(int i = 0; i < 3; i++)
+	{
+	    int dx = std::abs(t_coords[0] - t_src[0]);
+	    int dimSize = Layout::lattSize()[i];
+	    dx = (dx > dimSize - dx) ? dimSize - dx : dx;
+	    dist += dx*dx;
+	}
+	
 	return dist <= R*R;
 	    
     }
