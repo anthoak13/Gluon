@@ -64,18 +64,11 @@ int main(int argc, char *argv[])
 	try
 	{
 	    std::cout << "Reading in file: " << argv[i+(argc - numFiles)] << std::endl;
+	    
 	    xml_in.open(argv[i + (argc-numFiles)]);
 
-	    //Get the dimmensions of the lattice from the
-	    //xml file.
-	    multi1d<int> lattSize;
-	    read(xml_in,"/chroma/Input/chroma/Param/nrow", lattSize);
-
-	    //Loop through and copy values from xmlFile into
-	    //O_b
 	    read(xml_in, "/chroma/InlineObservables/elem/GMF_O_b/O_b", O_b[i]);
 	    
-	}
 	}
 	catch(const std::string& e)
 	{
