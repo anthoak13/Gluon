@@ -288,14 +288,9 @@ namespace Chroma
 	}
 	    
 	    //Write O_b out to the xml file
-	    for(int t = 0; t < O_b.size(); t++)
-	    {
-		push(xml_out, "t_" + std::to_string(t));
-		write(xml_out, "O_b", O_b.at(t));
-		write(xml_out, "E2", E.at(t));
-		write(xml_out, "B2", B.at(t));
-		pop(xml_out);
-	    }
+	write(xml_out, "O_b", O_b);
+	write(xml_out, "E2", E);
+	write(xml_out, "B2", B);
 
 	pop(xml_out);
 		

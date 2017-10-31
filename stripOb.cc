@@ -70,21 +70,12 @@ int main(int argc, char *argv[])
 	    //xml file.
 	    multi1d<int> lattSize;
 	    read(xml_in,"/chroma/Input/chroma/Param/nrow", lattSize);
-	    int t_start = 0;
-	    read(xml_in,"/chroma/Input/chroma/Param/InlineMeasurements/elem/t_start", t_start);
-	    std::cout << "Starting at: " << t_start << std::endl;
 
 	    //Loop through and copy values from xmlFile into
 	    //O_b
-	    for(int t = 0; t < lattSize[3]; t++)
-	    {
-		double val = 0;
-		int time = (t - t_start + lattSize[3]) % lattSize[3];
-		//std::cout << t << " " << time << std::endl;
-		read(xml_in, "/chroma/InlineObservables/elem/GMF_O_b/t_" +
-		     std::to_string((t-t_start)%lattSize[3]) + "/O_b", val);
-		O_b.at(i).push_back(val);
-	    }
+	    read(xml_in, "/chroma/InlineObservables/elem/GMF_O_b/O_b", O_b[i]);
+	    
+	}
 	}
 	catch(const std::string& e)
 	{
