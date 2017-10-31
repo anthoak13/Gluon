@@ -42,6 +42,11 @@ int main(int argc, char *argv[])
     readFile(corr2pt, argv[1]);
     int nT = O_b.back().size();
     int nConf = O_b.size();
+    if(O_b.size() != corr2pt.size())
+    {
+	std::cout << "Error! Ob and 2pt not same size!" <<std::endl;
+	return -1;
+    }
 
     /** Create jackknife of O_b and C2**/
     vecDouble avg, sig;
@@ -50,14 +55,8 @@ int main(int argc, char *argv[])
     vecDouble avgOb = avg;
     jackknife(corr2pt, avg, sig);
     writeFile("corr2ptjb.txt", avg, sig);
+    vecDouble avg2pt2 = avg;
 
-    /** Do vacuum subtraction on O_b and 2pt config by config **/
-    for(int conf = 0; conf < nConf; conf++)
-	for(int t = 0; t < nT; t++)
-	{
-	    O_b[conf][t] -= avgOb[t];
-	    //corr2pt[conf][t] -= avg[t];
-	}
     
     
     /** Avergage c2pt over the sources per configuration **/
@@ -73,6 +72,7 @@ int main(int argc, char *argv[])
 	    for(int i = 0; i < numSrc; i++)
 	    {
 		comp2pt[conf][t] += corr2pt[conf][i*subT + t];
+		
 		if (t < (subT - 1))
 		    effMass2[conf][t] += corr2pt[conf][i*subT + t]
 			/corr2pt[conf][(i*subT + (t + 1)) % nT];
@@ -99,32 +99,6 @@ int main(int argc, char *argv[])
     }
     writeFile("2ptEffMass.txt", effMass, effMass);
 
-    /** find matrix elements **/ //t_1 associated with O_b
-    vec2dDouble x;
-    x.resize(nConf);
-    for(int conf = 0; conf < nConf; conf++)
-    {
-	x.at(conf) = vecDouble(subT,0);
-	for(int t = 0; t < subT; t++)
-	    for(int t_1 = 1; t_1 < t; t_1++)
-		for(int i = 0; i < numSrc; i++)
-		    x[conf].at(t) += (O_b[conf][i*subT + t_1]*corr2pt[conf][i*subT+t]);
-	
-	for(int t = 0; t < subT; t++)
-	{
-	    //x[conf][t] *= (double)-1/9;
-	    x[conf][t] /= (double)numSrc;
-	}
-    }
-    jackknife(x,avg,sig);
-    
-    for(int t = 0; t< subT; t++)
-    {
-	avg[t] /= avg2pt[t];
-	sig[t] /= avg2pt[t];
-    }
-    writeFile("x.txt", avg, sig);
-
     //** Create jackknife of C2/<C2> **/
     vec2dDouble norm2pt;
     norm2pt.resize(nConf);
@@ -140,6 +114,38 @@ int main(int argc, char *argv[])
     jackknife(norm2pt,avg,sig);
     writeFile("norm2pt.txt", avg, sig);
 
+
+    /** Do vacuum subtraction on O_b and 2pt config by config **/
+    for(int conf = 0; conf < nConf; conf++)
+	for(int t = 0; t < nT; t++)
+	{
+	    O_b[conf][t] -= avgOb[t];
+	    corr2pt[conf][t] -= avg2pt2[t];
+	}
+    
+
+    /** find matrix elements **/ //t_1 associated with O_b
+    vec2dDouble x;
+    x.resize(nConf);
+    for(int conf = 0; conf < nConf; conf++)
+    {
+	x.at(conf) = vecDouble(subT,0);
+	for(int t = 0; t < subT; t++)
+	    for(int t_1 = 1; t_1 < t; t_1++)
+		for(int i = 0; i < numSrc; i++)
+		    x[conf].at(t) += (O_b[conf][i*subT + t_1]*corr2pt[conf][i*subT+t]);
+	
+	for(int t = 0; t < subT; t++)
+	{
+	    //x[conf][t] *= (double)-1/9;
+	    x[conf][t] /= (double)numSrc;
+	    x[conf][t] /= avg2pt[t];
+	}
+    }
+    jackknife(x,avg,sig);
+    writeFile("x.txt", avg, sig);
+
+    
 }
 
 int usage()
