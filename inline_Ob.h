@@ -5,7 +5,10 @@
 #include "meas/inline/abs_inline_measurement.h"
 
 namespace Chroma 
-{ 
+{
+
+
+    
   // A namespace for this particular   measurement
   namespace InlineObEnv 
   {
@@ -24,17 +27,23 @@ namespace Chroma
 	
 	// Write myself out
 	void write(XMLWriter& xml_out, const std::string& path);
-	
-	// How often should I measure me in an HMC run
-	unsigned long frequency;
 
 	struct NamedObject_t
 	{
 	    std::string gauge_id;
 	} named_obj;
 
-	int t_start;
-	int t_length;
+	struct Src_t
+	{
+	    multi1d<int> srcLoc;
+	    int t_start;
+	    int t_end;
+	};
+	
+	multi1d<Src_t> srcs;
+	int radius;
+	double frequency;
+
 	
 	// Parameters to pull from the xml file
 	std::string xml_file; //optional xml output
@@ -69,6 +78,9 @@ namespace Chroma
 
     //function to get the time direction
     static int tDir() { return Nd-1;}
+
+    //Get if the location is valid given Radius
+    bool validLocation(const multi1d<int>& t_coords, const multi1d<int> t_src, int R);
 
     //Returns unnormalized O_b at coordinates coords
     //Also returns E^2 and B^2 at that point

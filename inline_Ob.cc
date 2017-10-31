@@ -4,8 +4,25 @@
 #include <iostream>
 #include <string>
 
+
 namespace Chroma 
 {
+    void write(XMLWriter& xml, const std::string& path, const InlineObEnv::InlineObParams::Src_t& src)
+    {
+	push(xml, path);
+
+	write(xml, "t_src", src.srcLoc);
+	write(xml, "t_start", src.t_start);
+	write(xml, "t_end", src.t_end);
+	
+	pop(xml);
+    }
+    void write(QDP::XMLWriter& xml, const std::string& path, const Chroma::InlineObEnv::InlineObParams::NamedObject_t& named_obj)
+    {
+	push(xml, path);
+	write(xml, "gauge_id", named_obj.gauge_id);
+	pop(xml);
+    }
 
     /** Functions to read input xml file **/
     void read(XMLReader& xml, const std::string& path, InlineObEnv::InlineObParams::NamedObject_t& named_obj)
@@ -14,6 +31,18 @@ namespace Chroma
 	
 	read(namedTop, "gauge_id", named_obj.gauge_id);
     }
+
+    void read(XMLReader& xml, const std::string& path, InlineObEnv::InlineObParams::Src_t& src)
+    {
+	XMLReader namedTop(xml, path);
+
+	read(namedTop, "t_src", src.srcLoc);
+	read(namedTop, "t_start", src.t_start);
+	read(namedTop, "t_end", src.t_end);
+	
+    }
+
+   
 
     
     namespace InlineObEnv 
@@ -53,7 +82,7 @@ namespace Chroma
 	/*** Implementation of Parameter functions ***/
 	
 	//Set default parameters
-	InlineObParams::InlineObParams() { frequency = 0; t_start = 0; t_length = 0;}
+	InlineObParams::InlineObParams() { frequency = 0; radius = 0; srcs.resize(1); }
 	
 	//Read parameters in from xml file
 	InlineObParams::InlineObParams(XMLReader& xml_in, const std::string& path) 
@@ -75,8 +104,9 @@ namespace Chroma
 		//spaced in time. See branch First-O_b for code
 		//that drops this assumtion and takes sources
 		//as the arguments (loc & start/stop times)
-		read(paramtop, "t_start", t_start);
-		read(paramtop, "t_length", t_length);
+		read(paramtop, "Multi_Src", srcs[0]);
+
+		read(paramtop, "radius", radius);
 
 		
 		// Possible alternate XML file pattern
@@ -101,9 +131,11 @@ namespace Chroma
 	    push(xml_out, path);
 	    
 	    // write our all params
-	    QDP::write(xml_out, "t_start", t_start);
-	    QDP::write(xml_out, "t_length", t_length);
-	    
+	    //QDP::write(xml_out, "Multi_Src", srcs[0]);
+	    //QDP::write(xml_out, "Named_Object", named_obj);
+	    QDP::write(xml_out, "radius", radius);
+
+		  
 	    
 	    if(xml_file != "")
 		QDP::write(xml_out, "xml_file", xml_file);
@@ -246,8 +278,9 @@ namespace Chroma
 	std::vector<Double> E;
 	std::vector<Double> B;
 
+	//TODO:Change to a loop over srcs
 	//Start at t_start
-	getO_b(O_b, E, B, params.t_start, plane_plaq[0]);
+	getO_b(O_b, E, B, params.srcs[0].t_start, plane_plaq[0]);
 
 	//Write O_b out to the xml file
 	for(int t = 0; t < O_b.size(); t++)
@@ -322,10 +355,13 @@ namespace Chroma
 		    for(int z = 0; z < Layout::lattSize()[2]; z++)
 		    {
 			t_coords[2] = z;
-			Double e,b;
-			O_b += getO_b(t_coords, plane_plaq, e, b);
-			E += e;
-			B += b;
+			if(true)
+			{
+			    Double e,b;
+			    O_b += getO_b(t_coords, plane_plaq, e, b);
+			    E += e;
+			    B += b;
+			}
 		    } 
 		}
 	    } //End sum over space
@@ -371,4 +407,13 @@ namespace Chroma
 	} //end 1st half
         return E-B;
     } //end getO_b
+
+    bool validLocation(const multi1d<int>& t_coords, const multi1d<int> t_src, int R)
+    {
+	int dist = 0;
+	for(int i = 0; i < 4; i++)
+	    dist += (t_coords[0] - t_src[0]) * (t_coords[0] - t_src[0]);
+	return dist <= R*R;
+	    
+    }
 };
