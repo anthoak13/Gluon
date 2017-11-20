@@ -44,30 +44,8 @@ int main(int argc, char *argv[])
     int nConf = O_b.size();
     if(O_b.size() != corr2pt.size())
     {
-	if(corr2pt.size() % O_b.size() == 0)
-	{
-	    auto O_bin = O_b;
-	    int numCopy = corr2pt.size() / O_b.size();
-	    int sizeOb = O_b.size();
-	    std::cout << "Using " << numCopy << " copies of input O_b"
-		      << std::endl;
-	    O_b.clear();
-	    for(int i = 0; i < sizeOb; i++)
-	    {
-		for(int j = 0; j < numCopy; j++)
-		    O_b.push_back(O_bin.at(i));
-	    }
-
-	    std::cout << "Size of Ob: " << O_b.size() << std::endl
-		      << "Size of 2pt: " << corr2pt.size() << std::endl;
-	}
-	else
-	{
-	std::cout << "Error! Ob and 2pt not same size!" << std::endl
-		  << "Using the first " << nConf << " cfgs from 2pt file"
-		  << std::endl;
-//	return -1;
-	}
+	std::cout << "Error! Ob and 2pt not same size!" <<std::endl;
+	return -1;
     }
 
     /** Create jackknife of O_b and C2**/
