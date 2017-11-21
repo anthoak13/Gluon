@@ -106,7 +106,10 @@ namespace Chroma
 		//as the arguments (loc & start/stop times)
 		read(paramtop, "Multi_Src", srcs);
 
-		read(paramtop, "radius", radius);
+		if(paramtop.count("radius") == 1)
+		    read(paramtop, "radius", radius);
+		else
+		    radius = 0;
 
 		
 		// Possible alternate XML file pattern
@@ -416,6 +419,8 @@ namespace Chroma
 				     const multi1d<int>& t_src,
 				     int R)
     {
+	if (R == 0) return true;
+	
 	int dist = 0;
 	for(int i = 0; i < 3; i++)
 	{

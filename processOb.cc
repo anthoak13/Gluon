@@ -42,9 +42,11 @@ int main(int argc, char *argv[])
     readFile(corr2pt, argv[1]);
     int nT = O_b.back().size();
     int nConf = O_b.size();
+
+    //Make sure number of srcs passed is same for O_b and 2pt
     if(O_b.size() != corr2pt.size())
     {
-	if(corr2pt.size() % O_b.size() == 0)
+	/* if(corr2pt.size() % O_b.size() == 0)
 	{
 	    auto O_bin = O_b;
 	    int numCopy = corr2pt.size() / O_b.size();
@@ -62,12 +64,13 @@ int main(int argc, char *argv[])
 		      << "Size of 2pt: " << corr2pt.size() << std::endl;
 	}
 	else
-	{
-	std::cout << "Error! Ob and 2pt not same size!" << std::endl
-		  << "Using the first " << nConf << " cfgs from 2pt file"
-		  << std::endl;
-//	return -1;
-	}
+	{ */
+	std::cout << "Error! Ob (" << O_b.size() << ") and 2pt ("
+		  << corr2pt.size() << ") not same size!" << std::endl;
+	    //<< "Using the first " << nConf << " cfgs from 2pt file"
+	    //<< std::endl;
+	return -1;
+	//}
     }
 
     /** Create jackknife of O_b and C2**/
