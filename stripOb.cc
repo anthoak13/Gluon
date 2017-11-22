@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include "qdp.h"
+#include "inline_Ob.h"
 
 //Type aliases
 using vecDouble = std::vector<double>;
@@ -53,7 +54,10 @@ int main(int argc, char *argv[])
     }
     
     //Create 2D vector to hold all values of O_b
+    //and dublicate data stucture used by O_b for srcs
     vec2dDouble O_b;
+    multi1d<Chroma::InlineObEnv::InlineObParams::Src_t> srcs;
+    
     O_b.resize(numFiles);    
     
     for(int i = 0; i < numFiles; i++)
@@ -68,6 +72,13 @@ int main(int argc, char *argv[])
 	    xml_in.open(argv[i + (argc-numFiles)]);
 
 	    read(xml_in, "/GMF_O_b/O_b", O_b[i]);
+	    read(xml_in, "/GMF_O_b/Input/Multi_Src", srcs);
+	    int newStart = srcs[0].t_start;
+	    
+//	    std::cout << "New start is " << newStart << std::endl;
+//	    std::cout << O_b[i][0] << " " << O_b[i][newStart] << " ";
+	    std::rotate(O_b[i].begin(), O_b[i].begin()+newStart, O_b[i].end());
+//	    std::cout << O_b[i][0] << std::endl;
 	    
 	}
 	catch(const std::string& e)

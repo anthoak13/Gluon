@@ -4,44 +4,7 @@
 #include <iostream>
 #include <string>
 
-namespace QDP
-{
-     void read(XMLReader& xml, const std::string& path, InlineObEnv::InlineObParams::Src_t& src)
-    {
-	XMLReader namedTop(xml, path);
 
-	read(namedTop, "t_src", src.srcLoc);
-	read(namedTop, "t_start", src.t_start);
-	read(namedTop, "t_end", src.t_end);
-	
-    }
-
-    void write(XMLWriter& xml, const std::string& path, const InlineObEnv::InlineObParams::Src_t& src)
-    {
-	push(xml, path);
-
-	write(xml, "t_src", src.srcLoc);
-	write(xml, "t_start", src.t_start);
-	write(xml, "t_end", src.t_end);
-	
-	pop(xml);
-    }
-    void write(QDP::XMLWriter& xml, const std::string& path, const Chroma::InlineObEnv::InlineObParams::NamedObject_t& named_obj)
-    {
-	push(xml, path);
-	write(xml, "gauge_id", named_obj.gauge_id);
-	pop(xml);
-    }
-
-    /** Functions to read input xml file **/
-    void read(XMLReader& xml, const std::string& path, InlineObEnv::InlineObParams::NamedObject_t& named_obj)
-    {
-	XMLReader namedTop(xml, path);
-	
-	read(namedTop, "gauge_id", named_obj.gauge_id);
-    }
-
-}
 namespace Chroma 
 {
     
@@ -265,16 +228,6 @@ namespace Chroma
 	    }
 	}
 
-	/*** Calculating F ***/
-	multi1d<int> t_coords;
-	t_coords.resize(Nd);
-	t_coords[0] = 5;
-	t_coords[1] = 5;
-	t_coords[2] = 5;
-	t_coords[3] = 5;
-	//ColorMatrix F = get_G(t_coords, 1, 0, P);
-	//std::cout << F << std::endl;
-	
 	
 	/*** Calculating O_b ***/
 	std::vector<Double> O_b;

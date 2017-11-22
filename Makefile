@@ -20,7 +20,7 @@ chroma: $(OBJS)
 clean:
 	rm -rf chroma $(OBJS) *~
 
-stripOb: stripOb.cc
+stripOb: stripOb.cc $(HDRS)
 	$(CXX) -o $@ $(CXXFLAGS) -Wno-cpp $< $(LDFLAGS) $(LIBS)
 
 processOb: processOb.cc

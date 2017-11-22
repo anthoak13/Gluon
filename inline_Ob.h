@@ -4,11 +4,9 @@
 #include "chromabase.h"
 #include "meas/inline/abs_inline_measurement.h"
 
+
 namespace Chroma 
 {
-
-
-    
   // A namespace for this particular   measurement
   namespace InlineObEnv 
   {
@@ -109,5 +107,44 @@ namespace Chroma
   };
 
 };
+
+namespace QDP
+{
+    void read(XMLReader& xml, const std::string& path, Chroma::InlineObEnv::InlineObParams::Src_t& src)
+    {
+	XMLReader namedTop(xml, path);
+
+	read(namedTop, "t_src", src.srcLoc);
+	read(namedTop, "t_start", src.t_start);
+	read(namedTop, "t_end", src.t_end);
+	
+    }
+
+    void write(XMLWriter& xml, const std::string& path, const Chroma::InlineObEnv::InlineObParams::Src_t& src)
+    {
+	push(xml, path);
+
+	write(xml, "t_src", src.srcLoc);
+	write(xml, "t_start", src.t_start);
+	write(xml, "t_end", src.t_end);
+	
+	pop(xml);
+    }
+    void write(QDP::XMLWriter& xml, const std::string& path, const Chroma::InlineObEnv::InlineObParams::NamedObject_t& named_obj)
+    {
+	push(xml, path);
+	write(xml, "gauge_id", named_obj.gauge_id);
+	pop(xml);
+    }
+
+    /** Functions to read input xml file **/
+    void read(XMLReader& xml, const std::string& path, Chroma::InlineObEnv::InlineObParams::NamedObject_t& named_obj)
+    {
+	XMLReader namedTop(xml, path);
+	
+	read(namedTop, "gauge_id", named_obj.gauge_id);
+    }
+
+}
 
 #endif

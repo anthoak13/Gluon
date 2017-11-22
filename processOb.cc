@@ -20,7 +20,7 @@ void writeFile(const string fName, const vecDouble& a, const vecDouble& b);
 void jackknife(const vec3dDouble& data, vec2dDouble& avg, vec2dDouble& sig);
 void jackknife(const vec2dDouble& data, vecDouble& avg, vecDouble& sig);
 
-void compress(vec2dDouble& data, int tStart, int nSource);
+vec2dDouble compress(const vec2dDouble& data, int tStart, int nSource);
 void const3pt(vec3dDouble& corr3pt, const vec2dDouble& corr2pt, const vec2dDouble O_b);
 
 //Global variables
@@ -42,101 +42,49 @@ int main(int argc, char *argv[])
     readFile(corr2pt, argv[1]);
     int nT = O_b.back().size();
     int nConf = O_b.size();
+    int subT = nT/numSrc;
+
+    //Data structures
+    vecDouble avgOb2, avg2pt2; //of size nT
+    vecDouble avgOb, avg2pt; //size of subT
+
 
     //Make sure number of srcs passed is same for O_b and 2pt
     if(O_b.size() != corr2pt.size())
     {
-	/* if(corr2pt.size() % O_b.size() == 0)
-	{
-	    auto O_bin = O_b;
-	    int numCopy = corr2pt.size() / O_b.size();
-	    int sizeOb = O_b.size();
-	    std::cout << "Using " << numCopy << " copies of input O_b"
-		      << std::endl;
-	    O_b.clear();
-	    for(int i = 0; i < sizeOb; i++)
-	    {
-		for(int j = 0; j < numCopy; j++)
-		    O_b.push_back(O_bin.at(i));
-	    }
-
-	    std::cout << "Size of Ob: " << O_b.size() << std::endl
-		      << "Size of 2pt: " << corr2pt.size() << std::endl;
-	}
-	else
-	{ */
 	std::cout << "Error! Ob (" << O_b.size() << ") and 2pt ("
 		  << corr2pt.size() << ") not same size!" << std::endl;
-	    //<< "Using the first " << nConf << " cfgs from 2pt file"
-	    //<< std::endl;
 	return -1;
-	//}
     }
-
-    /** Create jackknife of O_b and C2**/
+    std::cout << "Using " << O_b.size() << " files with " << numSrc
+	      << " number of sources per file." << std::endl;
+       
+    /** Find the average value of O_b and 2pt at each timeslice **/
     vecDouble avg, sig;
-    jackknife(O_b, avg, sig); //does not modify O_b
-    writeFile("O_bjk.txt", avg, sig);
-    vecDouble avgOb = avg;
+    jackknife(O_b, avg, sig);
+    avgOb2 = avg;
+
     jackknife(corr2pt, avg, sig);
-    writeFile("corr2ptjb.txt", avg, sig);
-    vecDouble avg2pt2 = avg;
+    avg2pt2 = avg;
 
     
     
-    /** Avergage c2pt over the sources per configuration **/
-    int subT = nT/numSrc;
-    vec2dDouble comp2pt(nConf);
-    vec2dDouble effMass2(nConf);
-    for(int conf = 0; conf < nConf; conf++)
-    {
-	comp2pt[conf] = vecDouble(subT,0);
-	effMass2[conf] = vecDouble(subT,0);
-	for(int t = 0; t < subT; t++)
-	{
-	    for(int i = 0; i < numSrc; i++)
-	    {
-		comp2pt[conf][t] += corr2pt[conf][i*subT + t];
-		
-		if (t < (subT - 1))
-		    effMass2[conf][t] += corr2pt[conf][i*subT + t]
-			/corr2pt[conf][(i*subT + (t + 1)) % nT];
-	    }
-	    comp2pt[conf][t] /= numSrc;
-	    effMass2[conf][t] /= numSrc;
-	    effMass2[conf][t] = std::log(effMass2[conf][t]);
-	    
-	}
-    }
-    //Jackknife compressed 2pt and output
-    jackknife(effMass2,avg,sig);
-    writeFile("EffMass.txt",avg,sig);
-    jackknife(comp2pt,avg,sig);    
-    writeFile("2ptAvg.txt", avg, sig);
-    
+    /** Compress the 2pt and O_b and write them out **/
+    jackknife(compress(corr2pt,0,numSrc), avg, sig);
+    writeFile("2pt.txt",avg,sig);
+    avg2pt = avg;
+    jackknife(compress(O_b,0,numSrc), avg, sig);
+    writeFile("O_b.txt",avg,sig);
+    avgOb = avg;
 
-    //* Generate effective mass for c2pt *//
-    vecDouble effMass;
-    auto avg2pt = avg;
-    for(int t = 0; t < avg2pt.size(); t++)
-    {
-	effMass.push_back(std::log(avg2pt[t]/avg2pt[t+1 % avg2pt.size()]));
-    }
-    writeFile("2ptEffMass.txt", effMass, effMass);
-
-    //** Create jackknife of C2/<C2> **/
+    //** Create C2/<C2> and then jackknife**/
     vec2dDouble norm2pt;
     norm2pt.resize(nConf);
     for(int conf = 0; conf < nConf; conf++)
-    {
-	norm2pt.at(conf) = vecDouble(subT, 0);
-	for(int t = 0; t < subT; t++)
-	    for(int i = 0; i < numSrc; i++)
-		norm2pt[conf][t] += corr2pt[conf][i*subT+t]/avg2pt[t];
-	for(int t = 0; t < subT; t++)
-	    norm2pt[conf][t] /= (double)numSrc;
-    }
-    jackknife(norm2pt,avg,sig);
+	for(int t = 0; t < nT; t++)
+	    norm2pt[conf].push_back(corr2pt[conf][t]/avg2pt2[t]);
+
+    jackknife(compress(norm2pt,0,numSrc),avg,sig);
     writeFile("norm2pt.txt", avg, sig);
 
 
@@ -144,7 +92,7 @@ int main(int argc, char *argv[])
     for(int conf = 0; conf < nConf; conf++)
 	for(int t = 0; t < nT; t++)
 	{
-	    O_b[conf][t] -= avgOb[t];
+	    O_b[conf][t] -= avgOb2[t];
 	    corr2pt[conf][t] -= avg2pt2[t];
 	}
     
@@ -156,21 +104,18 @@ int main(int argc, char *argv[])
     {
 	x.at(conf) = vecDouble(subT,0);
 	for(int t = 0; t < subT; t++)
+	{
 	    for(int t_1 = 1; t_1 < t; t_1++)
 		for(int i = 0; i < numSrc; i++)
 		    x[conf].at(t) += (O_b[conf][i*subT + t_1]*corr2pt[conf][i*subT+t]);
 	
-	for(int t = 0; t < subT; t++)
-	{
-	    //x[conf][t] *= (double)-1/9;
 	    x[conf][t] /= (double)numSrc;
 	    x[conf][t] /= avg2pt[t];
 	}
     }
+
     jackknife(x,avg,sig);
     writeFile("x.txt", avg, sig);
-
-    
 }
 
 int usage()
@@ -320,22 +265,24 @@ void jackknife(const vec3dDouble& data, vec2dDouble& avg, vec2dDouble& sig)
     }
 }
 
-void compress(vec2dDouble& data, int tStart, int nSrc)
+vec2dDouble compress(const vec2dDouble& data, int tStart, int nSrc)
 {
-    int interval = data.back().size()/(double)nSrc;
+    int subT = data.back().size()/(double)nSrc;
     int nConf = data.size();
 
-    
+    vec2dDouble ret(nConf);
     for(int conf = 0; conf < nConf; conf++)
     {
- 	for(int t = 0; t < interval; t++)
+	ret[conf] = vecDouble(subT,0);
+	for(int t = 0; t < subT; t++)
 	{
-	    for(int i = 1; i < nSrc; i++)
-		data[conf][t] += data[conf][(interval * i + t) % data.size()];
-	    data[conf][t] /= nSrc;
+	    for(int i = 0; i < numSrc; i++)
+		ret[conf][t] += data[conf][i*subT + t];
+	    
+	    ret[conf][t] /= numSrc;
 	}
-	data[conf].resize(interval);
     }
+    return ret;
 }
 
 void const3pt(vec3dDouble& data,
