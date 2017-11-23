@@ -110,7 +110,7 @@ namespace Chroma
 
 namespace QDP
 {
-    void read(XMLReader& xml, const std::string& path, Chroma::InlineObEnv::InlineObParams::Src_t& src)
+    inline void read(XMLReader& xml, const std::string& path, Chroma::InlineObEnv::InlineObParams::Src_t& src)
     {
 	XMLReader namedTop(xml, path);
 
@@ -120,7 +120,7 @@ namespace QDP
 	
     }
 
-    void write(XMLWriter& xml, const std::string& path, const Chroma::InlineObEnv::InlineObParams::Src_t& src)
+    inline void write(XMLWriter& xml, const std::string& path, const Chroma::InlineObEnv::InlineObParams::Src_t& src)
     {
 	push(xml, path);
 
@@ -130,7 +130,7 @@ namespace QDP
 	
 	pop(xml);
     }
-    void write(QDP::XMLWriter& xml, const std::string& path, const Chroma::InlineObEnv::InlineObParams::NamedObject_t& named_obj)
+    inline void write(QDP::XMLWriter& xml, const std::string& path, const Chroma::InlineObEnv::InlineObParams::NamedObject_t& named_obj)
     {
 	push(xml, path);
 	write(xml, "gauge_id", named_obj.gauge_id);
@@ -138,7 +138,7 @@ namespace QDP
     }
 
     /** Functions to read input xml file **/
-    void read(XMLReader& xml, const std::string& path, Chroma::InlineObEnv::InlineObParams::NamedObject_t& named_obj)
+    inline void read(XMLReader& xml, const std::string& path, Chroma::InlineObEnv::InlineObParams::NamedObject_t& named_obj)
     {
 	XMLReader namedTop(xml, path);
 	
