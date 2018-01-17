@@ -74,10 +74,11 @@ int main(int argc, char *argv[])
 	    read(xml_in, "/GMF_O_b/O_b", O_b[i]);
 	    read(xml_in, "/GMF_O_b/Input/Multi_Src", srcs);
 	    int newStart = srcs[0].t_start;
-	    
+
+	    /** Shift to 0 (done in chroma code rn) **/
 //	    std::cout << "New start is " << newStart << std::endl;
 //	    std::cout << O_b[i][0] << " " << O_b[i][newStart] << " ";
-	    std::rotate(O_b[i].begin(), O_b[i].begin()+newStart, O_b[i].end());
+	    //std::rotate(O_b[i].begin(), O_b[i].begin()+newStart, O_b[i].end());
 //	    std::cout << O_b[i][0] << std::endl;
 	    
 	}
@@ -119,7 +120,7 @@ void writeFile(const vec2dDouble& yVec, std::ofstream& oFile, const string fName
     
     for(int i = 0; i < nConf; i++)
 	for(int t = 0; t < nT; t++)
-	oFile << t << " " << yVec[i][t] <<  std::endl;
+	    oFile << t << " " << yVec[i][t] << " 0" <<  std::endl;
 
     std::cout << "Done writing " << fName << std::endl;
 }

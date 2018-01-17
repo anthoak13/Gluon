@@ -164,7 +164,7 @@ namespace Chroma
 	//trace of the plaquette
 	multi3d<LatticeColorMatrix> plane_plaq;
 	multi2d<Double> tr_plane_plaq;
-	plane_plaq.resize(4,Nd,Nd);
+	plane_plaq.resize(4,Nd,Nd); //Quadrent, plane
 	tr_plane_plaq.resize(Nd,Nd);
 	Double w_plaq;
 	Double s_plaq;
@@ -178,6 +178,7 @@ namespace Chroma
 	    for(int nu = mu+1; nu < Nd; nu++)
 	    {
 		LatticeColorMatrix tmp, tmp2, tmp3;
+		//Do first quadrent
 		tmp = shift(u[nu], FORWARD, mu);
 		tmp2 = u[mu] * tmp;
 		tmp = shift(u[mu], FORWARD, nu);
@@ -185,6 +186,31 @@ namespace Chroma
 
 		//Record the plaquette in a cross section
 		plane_plaq[0][nu][mu] = tmp2*adj(tmp3);
+
+		//Do second quadrent
+		tmp = shift(shift(u[mu],FORWARD, nu), BACKWARD, mu);
+		tmp2 = u[nu] * adj(tmp);
+		tmp = shift(u[nu], BACKWARD, mu);
+		tmp3 = adj(tmp) * shift(u[mu], BACKWARD, nu);
+
+		plane_plaq[1][nu][mu] = tmp2*tmp3;
+
+		//Do third quad
+		tmp = shift(u[mu], BACKWARD, mu);
+		tmp2 = shift(shift(u[nu], BACKWARD, nu), BACKWARD, mu);
+		tmp2 = adj(tmp) * adj(tmp2);
+		tmp = shift(shift(u[mu], BACKWARD, nu), BACKWARD, mu);
+		tmp3 = tmp * shift(u[nu], BACKWARD, nu);
+
+		plane_plaq[2][nu][mu] = tmp2*tmp3;
+
+		//Do fourth quad
+		tmp = shift(u[nu], BACKWARD, nu);
+		tmp2 = adj(tmp) * shift(u[mu], BACKWARD, nu);
+		tmp3 = shift(shift(u[nu], FORWARD, mu), BACKWARD, nu) * adj(u[mu]);
+
+		plane_plaq[3][nu][mu] = tmp2*tmp3;
+		
 		tr_plane_plaq[nu][mu] = sum(real(trace(plane_plaq[0][nu][mu])));
 		
 		//Normalize the plane
@@ -215,9 +241,24 @@ namespace Chroma
 	write(xml_out, "s_plaq", s_plaq);
 	write(xml_out, "t_plaq", t_plaq);
 
-	/** Write to xml file and find P_{n,munu} **/
-	multi2d<LatticeColorMatrix> P;
-	P.resize(Nd,Nd);
+	/** Find F_{n,munu} **/
+	multi2d<LatticeColorMatrix> F;
+	F.resize(Nd,Nd);
+	for(int mu = 0; mu < Nd; mu++)
+	{
+	    for(int nu = mu+1; nu < Nd; nu++)
+	    {
+		for(int i = 0; i < 4; i++)
+		    F[mu][nu] += plane_plaq[i][mu][nu] - adj(plane_plaq[i][mu][nu]);
+
+		//TODO: Add factor of 1/(8 i g a^2)
+		F[mu][nu] *= 1/8.0;
+		F[nu][mu] = F[mu][nu]; //Symmetric
+	    }
+	}
+
+
+	/** Write plane plaq to xml file **/
 	
 	for(int mu = 0; mu < Nd; mu++)
 	{
@@ -228,6 +269,17 @@ namespace Chroma
 	    }
 	}
 
+
+	/** Try to calc E^2 with F **/
+	LatticeColorMatrix E2;
+	for(int i = 0; i < 3; i++)
+	    E2 += F[3][i]*adj(F[3][i]);
+	std::vector<Double> testE;
+	for(int t = 0; t < Layout::lattSize()[3]; t++)
+	    testE.push_back(sum(real(trace(E2))));
+
+	write(xml_out, "F-E2", testE);
+       
 	
 	/*** Calculating O_b ***/
 	std::vector<Double> O_b;

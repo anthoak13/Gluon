@@ -1,4 +1,6 @@
 //Main program to use O_bs and C2pt to construct 3pt and <x>
+//Assumes O_b and 2pt are shifted back to t=0.
+#include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <cmath>
@@ -19,6 +21,8 @@ void writeFile(const string fName, const vecDouble& a, const vecDouble& b);
 
 void jackknife(const vec3dDouble& data, vec2dDouble& avg, vec2dDouble& sig);
 void jackknife(const vec2dDouble& data, vecDouble& avg, vecDouble& sig);
+void jackknife(vec2dDouble& data);
+void avgSig(const vec2dDouble& data, vecDouble& avg, vecDouble& sig);
 
 vec2dDouble compress(const vec2dDouble& data, int tStart, int nSource);
 void const3pt(vec3dDouble& corr3pt, const vec2dDouble& corr2pt, const vec2dDouble O_b);
@@ -33,24 +37,83 @@ int numSrc = 4;
 //Arguments should be 2ptdatafile ObFile
 int main(int argc, char *argv[])
 {
-    if(argc != 3)
+    const bool runTest = false;
+    
+    bool do2pt = true;
+
+    
+    if(argc > 3 || argc < 2)
 	return usage();
+    if(argc == 2)
+	do2pt = false;
+
+    std::cout << "Argc = " << argc <<std::endl;
+
     
     /** Load in the 2pt correlator and Ob values **/
     vec2dDouble O_b, corr2pt;
-    readFile(O_b, argv[2]);
-    readFile(corr2pt, argv[1]);
+    readFile(O_b, argv[1]);
+    if(do2pt)
+	readFile(corr2pt, argv[2]);
+
+    
     int nT = O_b.back().size();
     int nConf = O_b.size();
     int subT = nT/numSrc;
 
-    //Data structures
-    vecDouble avgOb2, avg2pt2; //of size nT
-    vecDouble avgOb, avg2pt; //size of subT
 
+    /**Test for exploring effect of adding more sources to data**/
+    if(runTest)
+    {
+	//Find O_b with four sources
+	vecDouble avg1, sig1;
+	jackknife(O_b, avg1, sig1);
+	writeFile("O_b4src.txt",avg1,sig1);
+	vec2dDouble multiSrc;
+	for(int conf = 0; conf < nConf; conf++)
+	{
+	    for(int t = 0; t < subT; t++)
+	    {
+		multiSrc.push_back(O_b.at(conf));
+		std::rotate(multiSrc.back().begin(), multiSrc.back().begin()+t, multiSrc.back().end());
+		if(conf == 0)
+		{
+		    for( auto&& elem : multiSrc.back())
+			std::cout << elem << std::endl;
+		    std::cout << std::endl;
+		}
+	    }
+	}
 
+	jackknife(multiSrc,avg1,sig1);
+	writeFile("O_b64src.txt",avg1, sig1);
+
+	vec2dDouble multiSrc2;
+	for(int conf = 0; conf < nConf; conf++)
+	{
+	    
+		multiSrc2.push_back(O_b.at(conf));
+		int rotateBy = conf % 16;
+		std::rotate(multiSrc2.back().begin(), multiSrc2.back().begin()+rotateBy, multiSrc2.back().end());
+		if(conf == 0)
+		{
+		    for( auto&& elem : multiSrc2.back())
+			std::cout << elem << std::endl;
+		    std::cout << std::endl;
+		}
+	    
+	}
+
+	jackknife(multiSrc2,avg1,sig1);
+	writeFile("O_b64srcConstT.txt",avg1, sig1);
+	
+	return 0;
+    } //End run test
+    
+
+    //std::cout << "Comparing size" << std::endl;
     //Make sure number of srcs passed is same for O_b and 2pt
-    if(O_b.size() != corr2pt.size())
+    if( do2pt && O_b.size() != corr2pt.size())
     {
 	std::cout << "Error! Ob (" << O_b.size() << ") and 2pt ("
 		  << corr2pt.size() << ") not same size!" << std::endl;
@@ -58,70 +121,95 @@ int main(int argc, char *argv[])
     }
     std::cout << "Using " << O_b.size() << " files with " << numSrc
 	      << " number of sources per file." << std::endl;
-       
+
+    //Data structures
+    vecDouble avgOb, avg2pt; //of size nT
+    
     /** Find the average value of O_b and 2pt at each timeslice **/
     vecDouble avg, sig;
     jackknife(O_b, avg, sig);
-    avgOb2 = avg;
-
-    jackknife(corr2pt, avg, sig);
-    avg2pt2 = avg;
-
+    avgOb = avg;
     
-    
-    /** Compress the 2pt and O_b and write them out **/
-    jackknife(compress(corr2pt,0,numSrc), avg, sig);
+        
+    /** Compress O_b and write it out **/
+    //jackknife(compress(O_b,0,numSrc), avg, sig);
+    writeFile("O_bAvg.txt",avg,sig);
+
+    //If no 2pt was passed, end processing here
+    if(!do2pt)
+	return 0;
+
+
+    //Get jackknife distro of 2pt and find the average and error
+    auto corr2ptjk = corr2pt;
+    jackknife(corr2ptjk);
+
+    avgSig(corr2pt, avg, sig);
     writeFile("2pt.txt",avg,sig);
     avg2pt = avg;
-    jackknife(compress(O_b,0,numSrc), avg, sig);
-    writeFile("O_b.txt",avg,sig);
-    avgOb = avg;
+    
 
     //** Create C2/<C2> and then jackknife**/
-    vec2dDouble norm2pt;
+    /*vec2dDouble norm2pt;
     norm2pt.resize(nConf);
     for(int conf = 0; conf < nConf; conf++)
 	for(int t = 0; t < nT; t++)
 	    norm2pt[conf].push_back(corr2pt[conf][t]/avg2pt2[t]);
 
     jackknife(compress(norm2pt,0,numSrc),avg,sig);
-    writeFile("norm2pt.txt", avg, sig);
+    writeFile("norm2pt.txt", avg, sig);*/
 
 
-    /** Do vacuum subtraction on O_b and 2pt config by config **/
-    for(int conf = 0; conf < nConf; conf++)
-	for(int t = 0; t < nT; t++)
-	{
-	    O_b[conf][t] -= avgOb2[t];
-	    corr2pt[conf][t] -= avg2pt2[t];
-	}
-    
+    //Get average 2pt over the four sources
+    //per configuration
 
-    /** find matrix elements **/ //t_1 associated with O_b
-    vec2dDouble x;
-    x.resize(nConf);
+    vec2dDouble avg2pt2;
     for(int conf = 0; conf < nConf; conf++)
     {
-	x.at(conf) = vecDouble(subT,0);
+	avg2pt2.push_back(vecDouble(subT,0));
 	for(int t = 0; t < subT; t++)
-	{
-	    for(int t_1 = 1; t_1 < t; t_1++)
-		for(int i = 0; i < numSrc; i++)
-		    x[conf].at(t) += (O_b[conf][i*subT + t_1]*corr2pt[conf][i*subT+t]);
-	
-	    x[conf][t] /= (double)numSrc;
-	    x[conf][t] /= avg2pt[t];
-	}
+	    for(int i = 0; i < numSrc; i++)
+		avg2pt2.back()[t] += corr2pt[conf][t+i*subT]/numSrc;
     }
 
-    jackknife(x,avg,sig);
-    writeFile("x.txt", avg, sig);
+    //jackknife(avg2pt2,avg,sig);
+    //writeFile("2ptTest.txt",avg,sig);
+    
+    /** find three point elements **/ //t_1 associated with O_b
+    vec2dDouble three;
+    three.resize(nConf);
+    for(int conf = 0; conf < nConf; conf++)
+    {
+	three.at(conf) = vecDouble(subT,0);
+	
+	for(int t = 0; t < subT; t++)
+	    for(int t_1 = 1; t_1 < t; t_1++)
+		for(int i = 0; i < numSrc; i++) //i is src
+		    three.at(conf).at(t) += O_b.at(conf).at(i*subT + t_1)
+					     * (corr2pt.at(conf).at(t+i*subT)- avg2pt2[conf][t])/4.0;
+	//Does vacuum subtraction on 2pt but not O_b (Because it's what yi-bo did in his comparison code)
+	
+    }
+    
+    //Do jackknife one 3pt
+    jackknife(three);
+    jackknife(avg2pt2);
+
+    for(int conf = 0; conf < nConf; conf++)
+	for(int t = 0; t < subT; t++)
+	    three[conf][t] /= avg2pt2[conf].at(t);
+
+    avgSig(three, avg, sig);
+    writeFile("x.txt",avg,sig);
+      
 }
 
 int usage()
 {
     std::cout << "Invalid number of arguments." << std::endl <<
-	"Usage: processOb 2ptFile ObFile" << std::endl;
+	"Usage: processOb  ObFile 2ptfile" << std::endl;
+    std::cout << "If only one file is passed, assume it is O_b " <<
+	"and do minimal processing." << std::endl;
     return -1;
 }
 
@@ -204,38 +292,63 @@ void writeFile(const string fName, const vecDouble& a, const vecDouble& b)
 
 }
 
-void jackknife(const vec2dDouble& data, vecDouble& avg, vecDouble& sig)
+void avgSig(const vec2dDouble& data, vecDouble& avg, vecDouble& sig)
 {
     int nConf = data.size();
-    int nT = data.at(0).size();
+    int nT = data.back().size();
+
+    if(nConf == 1)
+    {
+	avg = data.back();
+	sig = data.back();
+	return;
+    }
 
     avg.clear(); sig.clear();
     avg.resize(nT); sig.resize(nT);
-    vec2dDouble subset{data};
 
-    //Find the average value for each time in each subset
-    for(int i = 0; i < nConf; i++)
-	for(int t = 0; t < nT; t++)
-	    avg.at(t) += data.at(i).at(t);
-    
-    for(int i = 0; i < nConf; i++)
-	for(int t = 0; t < nT; t++)
-	    subset.at(i).at(t) = (avg[t]-data[i][t])/(nConf - 1);
-
-    //Use subsets to get central value and sigma
     std::fill(avg.begin(), avg.end(), 0);
-    for(int i = 0; i < nConf; i++)
-	for(int t = 0; t < nT; t++)
-	    avg[t] += subset[i][t];
     for(int t = 0; t < nT; t++)
+    {
+	for(int i = 0; i < nConf; i++)
+	    avg[t] += data[i][t];
 	avg[t] /= nConf;
+    }
     
     //Sigma
     for(int i = 0; i < nConf; i++)
 	for(int t = 0; t < nT; t++)
-	    sig[t] += std::pow(avg[t] - subset[i][t],2);
+	    sig[t] += std::pow(avg[t] - data[i][t],2);
     for(int t = 0; t < nT; t++)
 	sig[t] = std::sqrt((nConf - 1)/(double)nConf * sig[t]);
+}
+
+void jackknife(vec2dDouble& data)
+{
+    vec2dDouble subset{data};
+    int nConf = data.size();
+    int nT = data.back().size();
+    if(nConf == 1)
+	return;
+
+    vecDouble sum(nT,0);
+    for(int i = 0; i < nConf; i++)
+	for(int t = 0; t < nT; t++)
+	    sum.at(t) += data.at(i).at(t);
+    
+    for(int i = 0; i < nConf; i++)
+	for(int t = 0; t < nT; t++)
+	    subset.at(i).at(t) = (sum[t]-data[i][t])/(nConf - 1);
+    data = subset;
+}
+
+void jackknife(const vec2dDouble& data, vecDouble& avg, vecDouble& sig)
+{
+    
+    vec2dDouble subset{data};
+
+    jackknife(subset);
+    avgSig(subset, avg, sig);
         
 }
 //data[config][x][y] avg[x][y] sig[x][y]
