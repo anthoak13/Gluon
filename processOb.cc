@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
     if(do2pt)
 	readFile(corr2pt, argv[2]);
 
-    
+    /** Get information on size, etc. **/
     int nT = O_b.back().size();
     int nConf = O_b.size();
     int subT = nT/numSrc;
@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
     } //End run test
     
 
-    //std::cout << "Comparing size" << std::endl;
+    std::cout << "Comparing size" << std::endl;
     //Make sure number of srcs passed is same for O_b and 2pt
     if( do2pt && O_b.size() != corr2pt.size())
     {
@@ -120,44 +120,55 @@ int main(int argc, char *argv[])
 	return -1;
     }
     std::cout << "Using " << O_b.size() << " files with " << numSrc
-	      << " number of sources per file." << std::endl;
+	      << " sources per file." << std::endl;
 
     //Data structures
     vecDouble avgOb, avg2pt; //of size nT
+    auto O_bjk = O_b;
+    auto corr2ptjk = corr2pt;
     
-    /** Find the average value of O_b and 2pt at each timeslice **/
+    /** Find the jackknife distribution of O_b and the avg/sig **/
     vecDouble avg, sig;
-    jackknife(O_b, avg, sig);
+    jackknife(O_bjk);
+    avgSig(O_bjk, avg, sig);
     avgOb = avg;
     
         
-    /** Compress O_b and write it out **/
-    //jackknife(compress(O_b,0,numSrc), avg, sig);
+    /** write out the average O_b **/
     writeFile("O_bAvg.txt",avg,sig);
+    
+    /** write out the compressed, averaged O_b **/
+    jackknife(compress(O_b,0,numSrc), avg, sig);
+    writeFile("O_bAvgCompr.txt", avg, sig);
 
     //If no 2pt was passed, end processing here
     if(!do2pt)
 	return 0;
 
-
-    //Get jackknife distro of 2pt and find the average and error
-    auto corr2ptjk = corr2pt;
+    /** Find the jackknife distribution of 2pt and the avg/sig **/
     jackknife(corr2ptjk);
-
-    avgSig(corr2pt, avg, sig);
-    writeFile("2pt.txt",avg,sig);
+    avgSig(corr2ptjk, avg, sig);
     avg2pt = avg;
-    
 
-    //** Create C2/<C2> and then jackknife**/
-    /*vec2dDouble norm2pt;
+    /** write out the average O_b **/
+    writeFile("corr2ptAvg.txt",avg,sig);
+    
+    /** write out the compressed, averaged O_b **/
+    jackknife(compress(corr2pt,0,numSrc), avg, sig);
+    writeFile("corr2ptAvgCompr.txt", avg, sig);
+
+
+
+    /** Find 2pt/<2pt> using jackknife distribution 
+	(Equiv to finding 2pt/<2pt> and then jackknifing) **/
+    vec2dDouble norm2pt;
     norm2pt.resize(nConf);
     for(int conf = 0; conf < nConf; conf++)
 	for(int t = 0; t < nT; t++)
-	    norm2pt[conf].push_back(corr2pt[conf][t]/avg2pt2[t]);
+	    norm2pt[conf].push_back(corr2ptjk[conf][t]/avg2pt[t]);
 
-    jackknife(compress(norm2pt,0,numSrc),avg,sig);
-    writeFile("norm2pt.txt", avg, sig);*/
+    avgSig(norm2pt, avg, sig);
+    writeFile("norm2pt.txt", avg, sig);
 
 
     //Get average 2pt over the four sources
@@ -172,8 +183,6 @@ int main(int argc, char *argv[])
 		avg2pt2.back()[t] += corr2pt[conf][t+i*subT]/numSrc;
     }
 
-    //jackknife(avg2pt2,avg,sig);
-    //writeFile("2ptTest.txt",avg,sig);
     
     /** find three point elements **/ //t_1 associated with O_b
     vec2dDouble three;
@@ -185,8 +194,10 @@ int main(int argc, char *argv[])
 	for(int t = 0; t < subT; t++)
 	    for(int t_1 = 1; t_1 < t; t_1++)
 		for(int i = 0; i < numSrc; i++) //i is src
+		    //three.at(conf).at(t) += (O_b.at(conf).at(i*subT + t_1) - avgOb.at(i*subT + t_1))
+		    //	* (corr2pt.at(conf).at(t+i*subT) - avg2pt.at(t+i*subT) )/4.0;
 		    three.at(conf).at(t) += O_b.at(conf).at(i*subT + t_1)
-					     * (corr2pt.at(conf).at(t+i*subT)- avg2pt2[conf][t])/4.0;
+		    	* (corr2pt.at(conf).at(t+i*subT) - avg2pt2[conf][t])/4.0;
 	//Does vacuum subtraction on 2pt but not O_b (Because it's what yi-bo did in his comparison code)
 	
     }
@@ -195,7 +206,7 @@ int main(int argc, char *argv[])
     jackknife(three);
     jackknife(avg2pt2);
 
-    for(int conf = 0; conf < nConf; conf++)
+   for(int conf = 0; conf < nConf; conf++)
 	for(int t = 0; t < subT; t++)
 	    three[conf][t] /= avg2pt2[conf].at(t);
 
